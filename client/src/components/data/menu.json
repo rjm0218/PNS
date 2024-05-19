@@ -1,0 +1,41 @@
+[
+
+	  {
+		"label": "Account Info.",
+		"children": [
+		  {
+			"label": "Inventory",
+			"path": "inventory"
+		  },
+		  {
+			"label": "Sanctuary",
+			"path": "sanctuary"
+		  },
+		  {
+			"label": "Resources",
+			"path": "resources"
+		  }
+		]
+	  },
+	  {
+		"label": "Event Info.",
+		"children": [
+		  {
+			"label": "Alliance Events",
+			"path": "allianceevents"
+		  },
+		  {
+			"label": "Update Alln. Events",
+			"path": "updateallevents"
+		  },
+		  {
+			"label": "Ind. Events",
+			"path": "events"
+		  },
+		  {
+			"label": "Update Ind. Events",
+			"path": "updateevents"
+		  }
+		]
+	  }
+]

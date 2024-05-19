@@ -1,0 +1,47 @@
+.dashboard-container {
+	flex-grow: 1;
+	padding: 0px !important;
+	width: 100%;
+	margin: 0 !important;
+}
+
+.dashboard-content {
+	padding: 1em;
+}
+
+
+
+.add-button {
+	border-radius: 0.25em !important;
+}
+
+.gear-level-select, .hero-plus-level-select, .hero-level-select {
+	max-width: 9ch;
+	min-width: 8ch;
+}
+
+.boost-box {
+	max-width: 9ch;
+	min-width: 8ch;
+}
+
+.account-info {
+	background-color: #9C9C3C !important;
+}
+
+
+@media only screen and (max-width: 450px) {
+	
+	.acc-name {
+		max-width:30%;
+	}
+
+}
+
+@media only screen and (min-width: 450px) {
+
+	.acc-name {
+		max-width:40%;
+	}
+
+}

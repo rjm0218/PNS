@@ -1,0 +1,117 @@
+.navbarheader {
+	position: sticky;
+	top: 0;
+	z-index: 5;
+	padding-bottom: 1rem;
+}
+
+.navbarheader nav {
+	background-image: linear-gradient(to bottom right, #556B2F, #FFFFFF); 
+}
+
+.navbarheader Button {
+	 border-top-left-radius: 0px !important;
+	 border-bottom-left-radius: 0px !important;
+}
+
+.dashboard-container {
+	padding: 0px !important; 
+}
+
+.sort-button {
+  background-color: transparent;
+  border-width: 0;
+  font-family: inherit;
+  font-size: inherit;
+  font-style: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  padding: 0;
+}
+
+.visually-hidden {
+  border: 0 !important;
+  clip: rect(1px, 1px, 1px, 1px) !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  padding-bottom: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-top: 0 !important;
+  position: absolute !important;
+  white-space: nowrap !important;
+  width: 1px !important;
+}
+
+.account-selection {
+	display: flex;
+	flex-direction: row;
+	justify-content: flex-start;
+	align-items: center;
+	margin-left: 0.5rem;
+	padding-bottom: 1rem;
+}
+
+.account-selection p {
+	flex-basis: | auto;
+	min-width: 125px;
+	margin: 0;
+}
+
+.account-drop {
+	flex-grow: 1;
+	max-width: 50vw;
+}
+
+.acc-label {
+	background-color: black !important;
+	color: white !important;
+}
+
+.building-entry {
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	display: grid !important;
+	grid-template-columns: 1.5fr 2fr 1fr;
+	gap: 15px;
+	border: medium solid black;
+	margin: 0 !important;
+}
+
+.building-entry button {
+	background-color: rgba(0, 0, 0, 0);
+	border-color: rgba(0, 0, 0, 0); /* Fully transparent border */
+	padding: 0;
+	align-items: center;
+}
+
+.building-entry {
+	gap: 5px;
+}
+
+.building-name {
+	width: 5em !important;
+	font-size: 0.75em;
+	color: gold;
+}
+
+.level-value, .target-level-value {
+	max-width: 3em !important;
+}
+
+.building-entry button {
+	width: 1.5em;
+	font-size: 1em;
+	font-weight: 800;
+}
+
+.level-change {
+	display: flex;
+	flex-direction: column;
+	width: unset !important;
+	align-items: center;
+	height: 100%;
+	padding: 0 0.25em !important;
+}
+

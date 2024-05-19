@@ -1,0 +1,32 @@
+.inventory-container {
+	width: 100vw;
+	flex-grow: 2;
+	display: flex;
+	flex-direction: column;
+	padding: 0 !important;
+	max-height: 100vh;
+}
+
+.screenshots {
+	max-width:95vw !important;
+}
+
+.screenshots button {
+	margin-left: 0.5rem !important;
+}
+
+.inventory-list {
+	max-width: 99.5vw;
+	padding: 0.5rem;
+}
+
+
+.input-text {
+	background-color: black !important;
+	color: white !important;
+}
+
+.item-found {
+	font-size: min(3vw, 16px) !important;
+	margin-left: 0 !important;
+}
