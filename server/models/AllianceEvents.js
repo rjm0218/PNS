@@ -1,12 +1,12 @@
 const mongoose = require('mongoose');
 
-const allEventSchema = new mongoose.Schema({
+const allEventsSchema = new mongoose.Schema({
 	index: {type: Number, required: false},
 	alliance_name: { type: String, required: true},
     events: { type: Array, required: false},
 }, {collection: 'AllianceEvents'});
 
 
-const AllianceEvent = mongoose.model('AllianceEvent', allEventSchema);
+const AllianceEvents = mongoose.model('AllianceEvents', allEventsSchema);
 
-module.exports = AllianceEvent;
+module.exports = AllianceEvents;

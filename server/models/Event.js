@@ -6,10 +6,6 @@ const eventSchema = new mongoose.Schema({
 	maxPoints: { type: String, required: true}
 });
 
-eventSchema.pre('save', async function(next) {
-    next();
-});
-
 const Event = mongoose.model('Event', eventSchema);
 
 module.exports = Event;

@@ -14,13 +14,6 @@ const accountSchema = new mongoose.Schema({
 	buildings: { type: Array, required: false}
 }, {collection: 'accounts'});
 
-accountSchema.pre('save', async function(next) {
-	if (this.isModified()) {
-		console.log('account has been modified');
-	}
-    next();
-});
-
 const Account = mongoose.model('Account', accountSchema);
 
 module.exports = Account;

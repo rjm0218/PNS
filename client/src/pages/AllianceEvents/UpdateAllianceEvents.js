@@ -1,10 +1,7 @@
 import {useState, useEffect } from 'react';
-import FullCalendar from '@fullcalendar/react'
-import listPlugin from '@fullcalendar/list';
-import rrulePlugin from '@fullcalendar/rrule'
 import { datetime } from 'rrule';
 
-import { Button, Row, Col, InputGroup, Form, Accordion } from 'react-bootstrap';
+import { Button, Row, Col, Form, Accordion } from 'react-bootstrap';
 
 import {api} from '../../axios_config.js';
 import NavMenu from '../../components/NavMenu';
@@ -22,7 +19,7 @@ function UpdateAllianceEvents() {
 	const { viewSize } = useThemeContext();
 	const [events, setEvents] = useState([]);
 	const [modal, setModal] = useState(false);
-	const [newEvent, setNewEvent] = useState(eventTemplate);
+	const [newEvent, setNewEvent] = useState({...eventTemplate});
 	const [isCheckedDays, setCheckedDays] = useState(Array.from({ length: daysOfWeekRRule.length }).fill(false));
 	const [wasEdited, setWasEdited] = useState([]);
 	
@@ -141,7 +138,12 @@ function UpdateAllianceEvents() {
 		
 		if (attr === 'duration') {
 			newEventList[evindex][attr] = {'days': value};
-		} else {
+		} else if (newEventList[evindex][attr] === undefined) {
+			if (newEventList[evindex].rrule[attr] !== undefined) {
+				newEventList[evindex].rrule[attr] = value;
+			}
+		}
+		else {
 			newEventList[evindex][attr] = value;
 		}
 		
@@ -201,7 +203,7 @@ function UpdateAllianceEvents() {
 		if (attr === 'submit') {
 			setEvents([...events,tempEvent]);
 			updateDB(tempEvent,events.length);
-			setNewEvent(eventTemplate);
+			setNewEvent({...eventTemplate});
 			setModal(false)
 			return;
 		}
@@ -223,12 +225,12 @@ function UpdateAllianceEvents() {
 						let dayIdx = daysOfWeekRRule.findIndex(day => day === value);
 						newCheckList = [...isCheckedDays];
 						newCheckList[dayIdx] = false;
-						tempEvent.rrule[attr].pop(daysOfWeekRRule[dayIdx-1]);
+						tempEvent.rrule[attr].pop(daysOfWeekRRule[dayIdx+1]);
 					} else {	
 						let dayIdx = daysOfWeekRRule.findIndex(day => day === value);
 						newCheckList = [...isCheckedDays];
 						newCheckList[dayIdx] = true;
-						tempEvent.rrule[attr].push(daysOfWeekRRule[dayIdx-1]);
+						tempEvent.rrule[attr].push(daysOfWeekRRule[dayIdx+1]);
 					}
 					setCheckedDays(newCheckList);
 				} else {

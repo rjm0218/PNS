@@ -1,10 +1,12 @@
 const mongoose = require('mongoose');
 
-// Feedback model
-const Feedback = mongoose.model('Feedback', new mongoose.Schema({
+const feedbackSchema = new mongoose.Schema({
     name: String,
     email: String,
     message: String,
-}));
+},{collection: 'Feedback'});
 
-module.exports = Feedback;
+// Feedback model
+const Feedback = mongoose.model('Feedback', feedbackSchema);
+
+module.exports = {Feedback, feedbackSchema};

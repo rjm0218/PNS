@@ -25,16 +25,12 @@
 			"path": "allianceevents"
 		  },
 		  {
-			"label": "Update Alln. Events",
+			"label": "Update All. Events",
 			"path": "updateallevents"
 		  },
 		  {
 			"label": "Ind. Events",
 			"path": "events"
-		  },
-		  {
-			"label": "Update Ind. Events",
-			"path": "updateevents"
 		  }
 		]
 	  }

@@ -2,17 +2,21 @@ const mongoose = require('mongoose');
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const {Feedback, feedbackSchema} = require('./models/Feedback');
 const User = require('./models/User');
 const Account = require('./models/Account');
 const Building = require('./models/Building');
 const BuildReq = require('./models/BuildReq');
 const Discount = require('./models/Discount');
-const InventoryItem = require('./models/InventoryItem');
+const {InventoryItem, itemSchema} = require('./models/InventoryItem');
 const RevokedToken = require('./models/RevokedToken');
-const AllianceEvent = require('./models/AllianceEvent');
+const AllianceEvents = require('./models/AllianceEvents');
+const allEventSchema = require('./models/AllEvent');
+const {gearSchema, boostSchema, heroSchema} = require('./models/Misc');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
+const {body, cookie, validationResult} = require('express-validator');
 require('dotenv').config();
 
 const app = express();
@@ -51,6 +55,7 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTop
 
 app.get("/", (req, res) => res.send("Express on Vercel"));
 
+
 function log(message) {
 	let datetime = new Date().toISOString();
 	console.log(datetime + "	" + message);
@@ -86,113 +91,282 @@ async function verifyToken(req, res, next) {
 
 }
 
+// Define generalized validation middleware
+const validateJsonStructure = (jsonField) => {
+  return (req, res, next) => {
+    try {
+      const obj = JSON.parse(req.body[jsonField]);
+      req.body[`parsed${jsonField.charAt(0).toUpperCase() + jsonField.slice(1)}`] = obj; // Store parsed JSON for the next middleware
+      next();
+    } catch (error) {
+      return res.status(400).json({ errors: [{ msg: 'Invalid JSON format' }] });
+    }
+  };
+};
+
+const validateJsonEntries = (jsonField, schema) => {
+  return (req, res, next) => {
+    const errors = [];
+    const obj = req.body[`parsed${jsonField.charAt(0).toUpperCase() + jsonField.slice(1)}`];
+	log(obj);
+    for (const [key, rule] of Object.entries(schema)) {
+      if (!obj.hasOwnProperty(key)) {
+        errors.push({ key, msg: `${key} is required` });
+        continue;
+      }
+
+      const value = obj[key];
+	  log(value + ' ' + rule.type);
+      if (rule.required && (typeof value !== rule.type || (typeof value === 'string' && value.trim() === ''))) {
+        errors.push({ key, msg: `${key} must be a non-empty ${rule.type}` });
+      }
+
+      // Add more custom rules as needed, e.g., format checks, value ranges, etc.
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({ errors });
+    }
+
+    next();
+  };
+};
+
+// Feedback route
+app.post('/feedback',[
+	validateJsonStructure('feedback'), 
+	validateJsonEntries('feedback',feedbackSchema)
+	],
+	async (req, res) => {
+		if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+		try {
+			const errors = validationResult(req);
+			if (!errors.isEmpty()) {
+				return res.status(400).json({ errors: errors.array() });
+			}
+			
+			const feedback = req.body.parsedFeedback;
+			feed = new Feedback(feedback);
+			await feed.save();
+
+			res.status(201).send();
+		} catch (error) {
+			res.status(500).send(error.message);
+		}
+	}
+);
+
 // Register route
-app.post('/register', async (req, res) => {
-	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
-    try {
-        const { username, email, password } = req.body;
-        let user = await User.findOne({ $or: [{email },{username}]});
-        if (user) return res.status(400).send('User already registered.');
+app.post('/register',
+	[
+	  body("username").trim().notEmpty().escape(),
+	  body("email").trim().isEmail().normalizeEmail().escape(),
+	  body("password").trim().notEmpty().escape(),
+	],
+	async (req, res) => {
+		if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+		try {
+			const errors = validationResult(req);
+			if (!errors.isEmpty()) {
+				return res.status(400).json({ errors: errors.array() });
+			}
+			const { username, email, password } = req.body;
+			let user = await User.findOne({ $or: [{email },{username}]});
+			if (user) return res.status(400).send('User already registered.');
+			
+			user = new User({ username, email, password });
+			await user.save();
+
+			res.status(201).send();
+		} catch (error) {
+			res.status(500).send(error.message);
+		}
+	}
+);
+
+// Login route
+app.post('/login',
+	[
+	  body("username").trim().notEmpty().escape(),
+	  body("password").trim().notEmpty().escape(),
+	],
+	async (req, res) => {
+		if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+		try {
+			const errors = validationResult(req);
+			if (!errors.isEmpty()) {
+				return res.status(400).json({ errors: errors.array() });
+			}
+			
+			const { username, password } = req.body;
+			const user = await User.findOne({ username });
+			if (!user) return res.status(400).send('Invalid username.');
+
+			const isMatch = await bcrypt.compare(password, user.password);
+			if (!isMatch) return res.status(400).send('Invalid password.');
+
+			const token = jwt.sign({ _id: user._id}, process.env.JWT_SECRET); // , {expiresIn: '4h'} on end to reinstate expire
+			res.cookie('token', token, {httpOnly: true,sameSite: 'None', secure: true});
+			const name = user.username;
+			res.send({name});
+		} catch (error) {
+			res.status(500).send(error.message);
+		}
+	}
+);
+
+// Login route
+app.post('/logout',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	[
+		body("user").notEmpty().trim().escape(),
+	],
+	async (req, res) => {
+		if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
 		
-        user = new User({ username, email, password });
-        await user.save();
-
-        res.status(201).send();
-    } catch (error) {
-        res.status(500).send(error.message);
-    }
-});
-
-// Login route
-app.post('/login', async (req, res) => {
-	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
-    try {
-        const { username, password } = req.body;
-        const user = await User.findOne({ username });
-        if (!user) return res.status(400).send('Invalid username.');
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).send('Invalid password.');
-
-		const token = jwt.sign({ _id: user._id}, process.env.JWT_SECRET); // , {expiresIn: '4h'} on end to reinstate expire
-        res.cookie('token', token, {httpOnly: true,sameSite: 'None', secure: true});
-		const name = user.username;
-        res.send({name});
-    } catch (error) {
-        res.status(500).send(error.message);
-    }
-});
-
-// Login route
-app.post('/logout',verifyToken, async (req, res) => {
-	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
-	
-	const { user } = req.body;
-	const token = req.cookies.token;
-	let revToken = new RevokedToken({token});
-	await revToken.save();
-	
-	log(user + " successfully logged out.");
-	res.json({message: 'Logout successful.'})
-});
-
-// Login route
-app.post('/getAccounts',verifyToken, async (req, res) => {
-	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
-    try {
-        const { user } = req.body;
-        const accs = await Account.find({ 'user': user });
-        if (!accs) return res.status(400).send('Invalid username.');
-        res.send({ accs });
-    } catch (error) {
-        res.status(500).send(error.message);
-    }
-});
-
-// get user route
-app.post('/addAccount',verifyToken, async (req, res) => {
-	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
-	
-	const { user, accName } = req.body;
-	let buildings = [];
-	
-	//first get list of buildings to populate Account Array
-	try {
-		const buildingList = await Building.find().select('name');
-		buildings = buildingList.map(building => ({'name': building.name, 'level': 0}));
-	} catch (error) {
-		res.status(500).send(error.message);
+		const errors = validationResult(req);
+		if (!errors.isEmpty()) {
+			return res.status(400).json({ errors: errors.array() });
+		}
+		
+		const { user } = req.body;
+		const token = req.cookies.token;
+		let revToken = new RevokedToken({token});
+		await revToken.save();
+		
+		log(user + " successfully logged out.");
+		res.json({message: 'Logout successful.'})
 	}
-	
+);
 
-	let account = new Account({'user': user, 'name': accName, 'buildings': buildings});
-	await account.save();
-	res.send({ account});
-});
-
-// get user route
-app.post('/removeAccount',verifyToken, async (req, res) => {
-	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
-	
-	const { user, accName } = req.body;
-	
-	try {
-		const acc = await Account.findOneAndDelete({ $and : [{ 'user' : user },{'name' : accName} ]});
-	} catch (error) {
-		res.status(500).send(error.message);
+// Login route
+app.post('/getAccounts',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken, 
+	[
+		body("user").notEmpty().trim().escape(),
+	],
+	async (req, res) => {
+		if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+		try {
+			
+			const errors = validationResult(req);
+			if (!errors.isEmpty()) {
+				return res.status(400).json({ errors: errors.array() });
+			}
+			
+			const { user } = req.body;
+			const accs = await Account.find({ 'user': user });
+			if (!accs) return res.status(400).send('Invalid username.');
+			res.send({ accs });
+		} catch (error) {
+			res.status(500).send(error.message);
+		}
 	}
-	
-	res.status(200).send('Successfully deleted: ' + accName);
-});
+);
 
 // get user route
-app.post('/updateGearLevel', verifyToken, async (req, res) => {
+app.post('/addAccount',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+ 	[
+		body("user").notEmpty().trim().escape(),
+		body("accName").notEmpty().trim().escape(),
+	],
+	async (req, res) => {
+		if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+		
+		const errors = validationResult(req);
+		if (!errors.isEmpty()) {
+			return res.status(400).json({ errors: errors.array() });
+		}
+		
+		
+		const { user, accName } = req.body;
+		let buildings = [];
+		
+		//first get list of buildings to populate Account Array
+		try {
+			const buildingList = await Building.find().select('name');
+			buildings = buildingList.map(building => ({'name': building.name, 'level': 0}));
+		} catch (error) {
+			res.status(500).send(error.message);
+		}
+		
+
+		let account = new Account({'user': user, 'name': accName, 'buildings': buildings});
+		await account.save();
+		res.send({ account});
+	}
+);
+
+// get user route
+app.post('/removeAccount',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken, 
+	[
+		body("user").trim().notEmpty().escape(),
+		body("accName").trim().notEmpty().escape(),
+	],
+	async (req, res) => {
+		if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+		
+		const errors = validationResult(req);
+		if (!errors.isEmpty()) {
+			return res.status(400).json({ errors: errors.array() });
+		}
+		const { user, accName } = req.body;
+		
+		try {
+			const acc = await Account.findOneAndDelete({ $and : [{ 'user' : user },{'name' : accName} ]});
+		} catch (error) {
+			res.status(500).send(error.message);
+		}
+		
+		res.status(200).send('Successfully deleted: ' + accName);
+	}
+);
+
+// get user route
+app.post('/updateGearLevel',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	[
+		body("user").trim().notEmpty().escape(),
+		body("acToUpdate").trim().notEmpty().escape(),
+		body("newGear").notEmpty().isJSON().escape(),
+		body("type").notEmpty().isIn(['build','research']).escape().withMessage('Type must be either build or research'),
+		validateJsonStructure('newGear'), 
+		validateJsonEntries('newGear',gearSchema)
+	], 
+	async (req, res) => {
     if (req.method === 'OPTIONS') {
         return res.status(200).json({ body: "OK" });
     }
+	
+	  const errors = validationResult(req);
+	  if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	  }
 
-    const { user, acToUpdate, newGear, type } = req.body;
-    let gearPiece = JSON.parse(newGear);
+    const { user, acToUpdate, type } = req.body;
+    let gearPiece = req.body.parsedNewGear;
 
     try {
         // Find the account
@@ -253,10 +427,30 @@ app.post('/updateGearLevel', verifyToken, async (req, res) => {
 });
 
 // get user route
-app.post('/deleteGear',verifyToken, async (req, res) => {
+app.post('/deleteGear',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	[
+		body("user").trim().notEmpty().escape(),
+		body("acToUpdate").trim().notEmpty().escape(),
+		body("newGear").notEmpty().isJSON().escape(),
+		body("type").notEmpty().isIn(['build','research']).escape().withMessage('Type must be either build or research'),
+		validateJsonStructure('newGear'), 
+		validateJsonEntries('newGear',gearSchema)
+	],
+	async (req, res) => {
 	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
 	
-	const { user, acToUpdate, gearPiece, type } = req.body;
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
+	
+	const { user, acToUpdate, type } = req.body;
+	const gearPiece = req.body.parsedNewGear;
 	
 	Account.updateOne({'user': user, 'name': acToUpdate},{ $pull: { 'boosts.buildergear': {'name': gearPiece}}}).then((result) => {
 		log("Updated " + user + "'s account named " + acToUpdate + " to remove " + gearPiece + ".");
@@ -269,13 +463,31 @@ app.post('/deleteGear',verifyToken, async (req, res) => {
 });
 
 // get user route
-app.post('/updateHeroLevel', verifyToken, async (req, res) => {
+app.post('/updateHeroLevel',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	[
+		body("user").trim().notEmpty().escape(),
+		body("acToUpdate").trim().notEmpty().escape(),
+		body("newHero").notEmpty().isJSON().escape(),
+		validateJsonStructure('newHero'), 
+		validateJsonEntries('newHero',heroSchema)
+	],
+	async (req, res) => {
     if (req.method === 'OPTIONS') {
         return res.status(200).json({ body: "OK" });
     }
+	
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
 
-    const { user, acToUpdate, newHero } = req.body;
-    let hero = JSON.parse(newHero);
+    const { user, acToUpdate } = req.body;
+    let hero = req.body.parsedNewHero;
 
     try {
         // Find the account
@@ -320,8 +532,24 @@ app.post('/updateHeroLevel', verifyToken, async (req, res) => {
 });
 
 // get user route
-app.post('/deleteHero',verifyToken, async (req, res) => {
+app.post('/deleteHero',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	[
+		body("user").trim().notEmpty().escape(),
+		body("acToUpdate").trim().notEmpty().escape(),
+		body("hero").notEmpty().isAlpha().escape(),
+	],
+	async (req, res) => {
 	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+	
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
 	
 	const { user, acToUpdate, hero } = req.body;
 	
@@ -336,13 +564,31 @@ app.post('/deleteHero',verifyToken, async (req, res) => {
 });
 
 // get user route
-app.post('/updateBoosts', verifyToken, async (req, res) => {
+app.post('/updateBoosts',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	[
+		body("user").trim().notEmpty().escape(),
+		body("acToUpdate").trim().notEmpty().escape(),
+		body("newBoost").notEmpty().isJSON().escape(),
+		validateJsonStructure('newBoost'), 
+		validateJsonEntries('newBoost',boostSchema)
+	],
+	async (req, res) => {
     if (req.method === 'OPTIONS') {
         return res.status(200).json({ body: "OK" });
     }
 
-    const { user, acToUpdate, newboost } = req.body;
-    let boost = JSON.parse(newboost);
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
+
+    const { user, acToUpdate } = req.body;
+    let boost = parsedNewboost;
 
     try {
         // Find the account
@@ -364,7 +610,7 @@ app.post('/updateBoosts', verifyToken, async (req, res) => {
 			account.boosts.speeds = [];
 		}
 		
-		// Find the index of the boost in the heroes array
+		// Find the index of the boost in the speeds array
 		let index = account.boosts.speeds.findIndex(item => item.name === boost.name);
 
 		// If boost exists in the array, update it
@@ -389,8 +635,24 @@ app.post('/updateBoosts', verifyToken, async (req, res) => {
 });
 
 // get user route
-app.post('/inventory',verifyToken, async (req, res) => {
+app.post('/inventory',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	[
+		body("user").trim().notEmpty().escape(),
+		body("accName").trim().notEmpty().escape(),
+	],
+	async (req, res) => {
 	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+	
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
+
     try {
         const { user, accName } = req.body;
         const account = await Account.findOne({ 'user': user, 'name': accName },'inventory');
@@ -403,10 +665,29 @@ app.post('/inventory',verifyToken, async (req, res) => {
 
 
 // get user route
-app.post('/addToInventory',verifyToken, async (req, res) => {
+app.post('/addToInventory',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	[
+		body("user").trim().notEmpty().escape(),
+		body("accName").trim().notEmpty().escape(),
+		body("newItem").notEmpty().isJSON().escape(),
+		validateJsonStructure('newItem'), 
+		validateJsonEntries('newItem',itemSchema)
+	],
+	async (req, res) => {
 	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
-	const { user, accName, newItem } = req.body;
-	const newit = await new InventoryItem(newItem);
+	
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
+	
+	const { user, accName } = req.body;
+	const newit = await new InventoryItem(req.body.parsedNewItem);
 	
 	Account.updateOne({'user': user, 'name': accName},{ $push: { 'inventory': newit}}).then((result) => {
 		log("Added item to " + user + " account named " + accName + ".");
@@ -419,10 +700,29 @@ app.post('/addToInventory',verifyToken, async (req, res) => {
 });
 
 // get user route
-app.post('/removeFromInventory',verifyToken, async (req, res) => {
+app.post('/removeFromInventory',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	[
+		body("user").trim().notEmpty().escape(),
+		body("accName").trim().notEmpty().escape(),
+		body("itrm").notEmpty().isJSON().escape(),
+		validateJsonStructure('itrm'), 
+		validateJsonEntries('itrm',itemSchema)
+	],
+	async (req, res) => {
 	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
-    const { user, accName, itrm } = req.body;
-	const rmit = new InventoryItem(itrm);
+	
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
+	
+    const { user, accName } = req.body;
+	const rmit = new InventoryItem(req.body.parsedItrm);
 	Account.updateOne({'user': user, 'name': accName},{ $pull: { 'inventory': rmit}}).then((result) => {
 		log("Removed item from " + user + " account named " + accName + ".");
 	}).catch((err) => {
@@ -431,8 +731,26 @@ app.post('/removeFromInventory',verifyToken, async (req, res) => {
 
 });
 
-app.post('/updateInventory',verifyToken, async (req, res) => {
+app.post('/updateInventory',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	[
+		body("user").trim().notEmpty().escape(),
+		body("accName").trim().notEmpty().escape(),
+		body("item").trim().notEmpty().escape(),
+		body("name").trim().notEmpty().escape(),
+	],
+	async (req, res) => {
 	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+	
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
+	
     const { user, accName, item, name } = req.body;
 	
 	await Account.updateOne({'user': user, 'name': accName, 'inventory.name': name},
@@ -444,8 +762,24 @@ app.post('/updateInventory',verifyToken, async (req, res) => {
 });
 
 // get user route
-app.post('/sanctuary',verifyToken, async (req, res) => {
+app.post('/sanctuary',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	[
+		body("user").trim().notEmpty().escape(),
+		body("accName").trim().notEmpty().escape(),
+	],
+	async (req, res) => {
 	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+	
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
+	
     try {
         const { user, accName } = req.body;
         const account = await Account.findOne({ 'user': user, 'name': accName },'buildings');
@@ -456,8 +790,25 @@ app.post('/sanctuary',verifyToken, async (req, res) => {
     }
 });
 
-app.post('/updateSanctuary',verifyToken, async (req, res) => {
+app.post('/updateSanctuary',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	[
+		body("user").trim().notEmpty().escape(),
+		body("accName").trim().notEmpty().escape(),
+		body("building").notEmpty().escape(),
+	],
+	async (req, res) => {
 	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+	
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
+	
     const { user, accName, building } = req.body;
 	let name = building.name;
 	let level = building.level;
@@ -470,8 +821,19 @@ app.post('/updateSanctuary',verifyToken, async (req, res) => {
 	});
 });
 
-app.post('/getBuildRequirements',verifyToken, async (req, res) => {
+app.post('/getBuildRequirements',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	async (req, res) => {
 	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+	
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
 	
 	try {
 		const doc = await BuildReq.findOne({});
@@ -482,8 +844,23 @@ app.post('/getBuildRequirements',verifyToken, async (req, res) => {
     }
 });
 
-app.post('/getRSSRequirements',verifyToken, async (req, res) => {
+app.post('/getRSSRequirements',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	[
+		body("names").notEmpty().isArray({min: 0}).escape(),
+		body("gearLevel").trim().notEmpty().escape(),
+	],
+	async (req, res) => {
 	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+	
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
 	
 	const { names, gearLevel } = req.body;
 	let neededBuildings = []
@@ -500,8 +877,19 @@ app.post('/getRSSRequirements',verifyToken, async (req, res) => {
     }
 });
 
-app.post('/getRSSDiscounts',verifyToken, async (req, res) => {
+app.post('/getRSSDiscounts',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	async (req, res) => {
 	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+	
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
 
 	try {
 		const discounts = await Discount.findOne({});
@@ -512,11 +900,22 @@ app.post('/getRSSDiscounts',verifyToken, async (req, res) => {
     }
 });
 
-app.get('/getAllianceEvents',verifyToken, async (req, res) => {
+app.get('/getAllianceEvents',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	async (req, res) => {
 	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+	
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
 
 	try {
-		const events = await AllianceEvent.findOne({ 'alliance_name': "SYN"});
+		const events = await AllianceEvents.findOne({ 'alliance_name': "SYN"});
 		if (!events) return res.status(400).send('Could not get alliance events.');
 		res.send({events});
     } catch (error) {
@@ -524,15 +923,32 @@ app.get('/getAllianceEvents',verifyToken, async (req, res) => {
     }
 });
 
-app.post('/updateAllianceEvent',verifyToken, async (req, res) => {
+app.post('/updateAllianceEvent',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	[
+		body("tarEve").notEmpty().isJSON(),
+		body("evIdx").trim().notEmpty().isNumeric().escape(),
+		validateJsonStructure('tarEve'), 
+		validateJsonEntries('tarEve',allEventSchema)
+	],
+	async (req, res) => {
 	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+	
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
 
-	const { tarEve, evIdx } = req.body;
-	let eve = JSON.parse(tarEve);
+	const {  evIdx } = req.body;
+	let eve = req.body.parsedTarEve;
 	try {
 
 			// Find the account
-			const eventList = await AllianceEvent.findOne({ 'alliance_name': "SYN"});
+			const eventList = await AllianceEvents.findOne({ 'alliance_name': "SYN"});
 
 			if (!eventList) {
 				return res.status(404).send('Events not found');
@@ -560,12 +976,27 @@ app.post('/updateAllianceEvent',verifyToken, async (req, res) => {
 		}
 });
 
-app.post('/removeAllianceEvent',verifyToken, async (req, res) => {
+app.post('/removeAllianceEvent',
+	[
+		// Validate that the token is a JWT
+		cookie('token').isJWT().withMessage('Invalid token format')
+	],
+	verifyToken,
+	[
+		body("tarEve").notEmpty().isJSON(),
+		validateJsonStructure('tarEve'), 
+		validateJsonEntries('tarEve',allEventSchema)
+	],
+	async (req, res) => {
 	if(req.method === 'OPTIONS') { return res.status(200).json(({ body: "OK" })) }
+	
+	const errors = validationResult(req);
+	if (!errors.isEmpty()) {
+		return res.status(400).json({ errors: errors.array() });
+	}
 
-	const { tarEve } = req.body;
-	let eve = JSON.parse(tarEve);		
-	AllianceEvent.updateOne({ 'alliance_name': "SYN"},{ $pull: { 'events': eve}}).then((result) => {
+	let eve = req.body.parsedTarEve;		
+	AllianceEvents.updateOne({ 'alliance_name': "SYN"},{ $pull: { 'events': eve}}).then((result) => {
 		log("Removed " + eve.title + " from the event list.");
 		res.status(200).send("Successfully removed " + eve.title + " from the event list.");
 	}).catch((err) => {

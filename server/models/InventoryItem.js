@@ -7,10 +7,6 @@ const itemSchema = new mongoose.Schema({
 	multiplier: { type: String, required: false}
 }, {collection: 'users'});
 
-itemSchema.pre('save', async function(next) {
-    next();
-});
+const InventoryItem = mongoose.model('InventoryItem', itemSchema);
 
-const Item = mongoose.model('Item', itemSchema);
-
-module.exports = Item;
+module.exports = {InventoryItem, itemSchema};
