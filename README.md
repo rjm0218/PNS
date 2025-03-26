@@ -1,3 +1,8 @@
+# PNS Companion - Sanctuary Planner
+
+This project provides a web application for planning and managing building upgrades in a sanctuary-style game (or similar).  It allows users to plan upgrades, estimate resource costs, and track progress, and update building levels.
+
+**Features:**
 
 * **Building Planning:** Users select a target building and level to view required resources.
 * **Resource Cost Estimation:** Calculates total resource costs, considering existing buildings and account boosts (heroes, builder gear).
