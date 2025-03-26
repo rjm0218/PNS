@@ -1,25 +1,21 @@
-# PNS
-PNS Companion 
 
-Project Name: PNS Companion App
-This project provides a web application for planning and managing building upgrades in a sanctuary-style game (or similar). It allows users to plan upgrades, estimate resource costs, and track progress.
+* **Building Planning:** Users select a target building and level to view required resources.
+* **Resource Cost Estimation:** Calculates total resource costs, considering existing buildings and account boosts (heroes, builder gear).
+* **Account Management:** Users select their account for personalized calculations.
+* **Sanctuary Overview:**  Displays a comprehensive overview of the user's sanctuary, allowing for easy tracking of building levels and upgrades.  Allows users to update building levels.
+* **Responsive Design:** Adapts to different screen sizes.
 
-Features:
+**Technology Stack:**
 
-Building Planning: Users can select a target building and level to view the required resources for the upgrade.
-Resource Cost Estimation: The application calculates the total resource costs, considering existing buildings and account-specific boosts (heroes, builder gear).
-Account Management: Users can select their account to personalize resource calculations.
-Sanctuary Overview: A comprehensive overview of the user's sanctuary, allowing for easy tracking of building levels and upgrades.
-Responsive Design: The application adapts to different screen sizes for optimal usability.
-Technology Stack:
+* **Frontend:** React, React Bootstrap, Axios
+* **Backend:** Node.js, Express.js, Mongoose (MongoDB)
+* **Database:** MongoDB
 
-Frontend: React, React Bootstrap, Axios
-Backend: Node.js, Express.js, Mongoose (MongoDB), Express Validator, JWT (JSON Web Tokens)
-Database: MongoDB
-Architecture:
+**Architecture:**
 
-The application follows a client-server architecture. The frontend (React) handles user interaction and displays data. The backend (Node.js/Express.js) handles data fetching, calculations, and database interactions. JWTs are used for authentication and authorization.
+Client-server architecture. The frontend handles user interaction and display; the backend handles data fetching, calculations, and database interactions.
 
+```
 project-root/
 │
 ├── index.js                  # Main Express app entry point
