@@ -39,7 +39,7 @@ function Feedback(props) {
     const feedback = formData;
     try {
       // Send feedback data to the backend
-      await api.post("/feedback", feedback);
+      await api.post("/utils/feedback", feedback);
       setFormData({});
       props.setFeedbackMode(false); // Set submitFeedback state to true
     } catch (error) {

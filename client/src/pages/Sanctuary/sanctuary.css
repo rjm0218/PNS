@@ -54,14 +54,6 @@
 	grid-gap: 1rem 1.5rem;
 }
 
-@media only screen and (max-width: 450px) {
-	.req-table {
-		overflow-x: auto;
-		white-space: nowrap;
-		max-width: 100%;
-	}
-}
-
 .req-table th {
 	font-size: min(2vw, 20px);
 	background-color: #DFDFDF  !important;
@@ -89,3 +81,16 @@
 	font-size: min(1.5vw, 16px);
 	background-color: #DFDFDF  !important;
 }
+  
+.sanctuary-content {
+	padding: 1rem;
+	max-width: 1200px;
+	margin: auto;
+  }
+  
+  .building-list {
+	display: grid;
+	gap: 1rem;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+  

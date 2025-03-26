@@ -1,3 +1,4 @@
+import apiRoutes from '../../utils/apiRoutes';
 import { useState, useEffect } from 'react';
 import { Container, Button, Row, Col, Stack, InputGroup, Form, ButtonGroup, Dropdown } from 'react-bootstrap';
 import { createWorker, PSM } from 'tesseract.js';
@@ -47,7 +48,7 @@ function CurrentInventory({items, setItems}) {
 		const accName = currentAccount.name;
 
 		// Send a POST request to your backend server to save the item to the database
-		api.post('/addToInventory', { user, accName, newItem }).then(response => {
+		api.post(apiRoutes.inventory.add, { user, accName, newItem }).then(response => {
 			console.log('Item added to grocery list:', response.data);
 			// Optionally, update state or trigger any other actions
 		})
@@ -72,7 +73,7 @@ function CurrentInventory({items, setItems}) {
 		const accName = currentAccount.name;
 
 		// Send a POST request to your backend server to save the item to the database
-		api.post('/removeFromInventory', { user, accName, itrm })
+		api.post(apiRoutes.inventory.remove, { user, accName, itrm })
 		.then(response => {
 			console.log('Item removed from inventory list:', response.data);
 		// Optionally, update state or trigger any other actions
@@ -106,7 +107,7 @@ function CurrentInventory({items, setItems}) {
 		const accName = currentAccount.name;
 
 		// Send a POST request to your backend server to save the item to the database
-		api.post('/updateInventory', { user, accName, item, name})
+		api.post(apiRoutes.inventory.update, { user, accName, item, name})
 		  .then(response => {
 			console.log('Item added to inventory list:', response.data);
 			// Optionally, update state or trigger any other actions

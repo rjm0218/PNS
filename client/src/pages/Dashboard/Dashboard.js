@@ -43,9 +43,9 @@ function Dashboard() {
 
   const getUserData = useCallback(async () => {
     try {
-      const response = await api.post("/getAccounts", { user });
+      const response = await api.post("/accounts/getAccounts", { user });
       if (response.status === 200) {
-        const accs = response.data.accs;
+        const accs = response.data.data.accs;
         if (accs.length > 0) {
           setAllAccounts(accs);
           setCurrentAccount(accs[0]);
@@ -133,7 +133,7 @@ function Dashboard() {
 
   const handleDelete = async (accName) => {
     try {
-      const response = await api.post("/removeAccount", { user, accName });
+      const response = await api.post("/accounts/removeAccount", { user, accName });
       if (response.status === 200) {
       } else {
         console.error("Error:", response.statusText);
@@ -150,7 +150,7 @@ function Dashboard() {
   const addAccount = async () => {
     if (accName) {
       try {
-        const response = await api.post("/addAccount", { user, accName });
+        const response = await api.post("/accounts/addAccount", { user, accName });
         if (response == null) {
           console.log("Failed to add account to ", user);
         } else {
@@ -187,7 +187,7 @@ function Dashboard() {
     });
 
     try {
-      const response = await api.post("/updateGearLevel", {
+      const response = await api.post("/gear/updateGearLevel", {
         user,
         acToUpdate,
         newGear,
@@ -214,7 +214,7 @@ function Dashboard() {
     let acToUpdate = accounts[accindex].name;
 
     try {
-      const response = await api.post("/deleteGear", {
+      const response = await api.post("/gear/deleteGear", {
         user,
         acToUpdate,
         gearPiece,
@@ -240,7 +240,7 @@ function Dashboard() {
     });
 
     try {
-      const response = await api.post("/updateHeroLevel", {
+      const response = await api.post("/hero/updateHeroLevel", {
         user,
         acToUpdate,
         newHero,
@@ -260,7 +260,7 @@ function Dashboard() {
     let acToUpdate = accounts[accindex].name;
 
     try {
-      const response = await api.post("/deleteHero", {
+      const response = await api.post("/hero/deleteHero", {
         user,
         acToUpdate,
         hero,
@@ -313,7 +313,7 @@ function Dashboard() {
       let newboost = JSON.stringify({ name: boostname, value: boostvalue });
 
       try {
-        const response = await api.post("/updateBoosts", {
+        const response = await api.post("/boost/updateBoosts", {
           user,
           acToUpdate,
           newboost,

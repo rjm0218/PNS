@@ -22,7 +22,7 @@ const LoginProvider = ({ children}) => {
 	
 	const handleLogout = async (e) => {
 		try {
-			const response = await api.post('/logout', {user});
+			const response = await api.post('/auth/logout', {user});
 			if (response == null) {
 				console.log('Failed to logout ', user);
 			} else {
@@ -36,9 +36,9 @@ const LoginProvider = ({ children}) => {
 		localStorage.clear();
 	};
 	
-	const setUser = (name) => {
-		localStorage.setItem('username',name);
-		setUsername(name);
+	const setUser = (user) => {
+		localStorage.setItem('username',user.name);
+		setUsername(user.name);
 	};
 	
 	return (

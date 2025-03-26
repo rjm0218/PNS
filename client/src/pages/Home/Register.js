@@ -1,3 +1,4 @@
+import apiRoutes from '../../utils/apiRoutes';
 import { useState } from 'react';
 import { Container, Button, Stack, FloatingLabel, Form } from 'react-bootstrap';
 
@@ -58,7 +59,7 @@ function Register(props) {
 		setValidated(true)
 
 		try {
-			await api.post('/register', { username: formData.username, email: formData.email, password: formData.pass });
+			await api.post(apiRoutes.auth.register, { username: formData.username, email: formData.email, password: formData.pass });
 			setFormData({});
 			props.setIsRegisterMode(false); // Switch back to login mode after successful registration
 		} catch (error) {

@@ -1,3 +1,4 @@
+import apiRoutes from '../../utils/apiRoutes';
 import React, { useState, useEffect } from 'react';
 import {Form, FloatingLabel, Row, Col} from 'react-bootstrap';
 
@@ -5,8 +6,6 @@ import {api} from '../../axios_config.js';
 import Table from '../../components/Table';
 import { useThemeContext } from '../../context/theme.context';
 import { useAccountContext } from '../../context/account.context';
-
-import {getTotalCost} from './BuildCost';
 
 import './sanctuary.css';
 
@@ -19,59 +18,31 @@ function PlanAhead({buildings}) {
 	const [targetLevel, setTargetLevel] = useState(null);
 	const [ tData, setTData] = useState([]);
 	const [ tHeaders, setTHeaders] = useState([]);
+	const [isLoading, setIsLoading] = useState(false);
 	
 	useEffect(() => {
 		
 		const getReqData = async () => {
+			setIsLoading(true);
 			console.log("Getting info for building: " + targetBuilding + " to level: " + targetLevel);
-			let target = {'name': targetBuilding, 'level': targetLevel};
 			try {
-				const response = await api.post('/getBuildRequirements');
-				if (response != null) {
-					let data = response.data;
-					if (data != null) {
-						let req = data.doc.requirements;
-						let rss = await getTotalCost(req, buildings, target, currentAccount);
-						if (rss) {
-							let headers = ['Resource'];
-							headers.push('Total');
-							let builds = rss.buildings;
-							for (let i= 0; i < builds.length; i++) {
-								headers.push(builds[i].name + " (" + builds[i].level + ")");
-								
-							}
-							
-							setTHeaders(headers);
-							let rssData = [];
-							let rssNames = rss.totals.map(ele => ele.name);
-							
-							
-							// Dynamically set key-value pairs based on 'attributes'
-							for (let i = 0; i < rssNames.length; i++) {
-								let obj = {};
-								obj['Resource'] = rssNames[i];
-								for (let j = 0; j < builds.length; j++) {
-									let attr = headers[j+2];
-									obj[attr] = rss.perCost[j][i].toLocaleString();
-								}
-								obj['Total'] = rss.totals.find(ele => ele.name === rssNames[i]).amount.toLocaleString();
-								// Push the dynamically created object into 'data'
-								rssData.push(obj);
-							}
-							
-							console.log(rssData);
-							setTData(rssData);
-						} else {
-
-						}							
-					}
+				const response = await api.post(apiRoutes.planner.costEstimate, {
+					curAcc: currentAccount,
+					targetBuilding: { name: targetBuilding, level: targetLevel }
+				});
+				if (response != null && response.status === 200 && response.data.data) {
+					const {tableData } = response.data.data;
+					const resourceLabels = ['food','wood','steel','gas','building engin','blueprint','nanotube'];
+					setTHeaders(['Building', ...resourceLabels]);
+					setTData(tableData);
 				}
 			} catch (error) {
 				console.error(error.response ? error.response.data : 'No response');
 			}
+			setIsLoading(false);
 		};
 		
-		if (targetLevel) {
+		if (targetLevel && buildings.length > 0) {
 			getReqData();
 		}
 		
@@ -120,12 +91,14 @@ function PlanAhead({buildings}) {
 					</Col>
 				</Row>
 				<Row className="mb-3">
-					{tData.length > 0 &&
-						<Table obj={tData} headers={tHeaders} name='req-table' />
-					}
-					{targetLevel && tData.length === 0 &&
-						<p>Your {targetBuilding} is already above level {targetLevel}</p>
-					}
+					{isLoading ? (
+						<p>Loading...</p>
+					) : (
+						<>
+							{tData.length > 0 && <Table obj={tData} headers={tHeaders} name='req-table' />}
+							{targetLevel && tData.length === 0 && <p>Your {targetBuilding} is already above level {targetLevel}</p>}
+						</>
+					)}
 				</Row>
 			</div>
 	);

@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import apiRoutes from '../../utils/apiRoutes';
+import React from 'react';
 
 import {api} from '../../axios_config.js';
-import NavMenu from '../../components/NavMenu';
-import AccountSelection from '../../components/AccountSelection';
 import BuildingField from '../../components/BuildingField';
 import { useAccountContext } from '../../context/account.context';
 import { useLoginContext } from '../../context/login.context';
@@ -12,31 +11,38 @@ import './sanctuary.css';
 function SanctuaryOverview({buildings, setBuildings}) {
 
 	const { user } = useLoginContext();
-	const { accounts, currentAccount} = useAccountContext();
+	const {currentAccount} = useAccountContext();
 
+    const updateBuilding = (index, value) => {
+		setBuildings((prevBuildings) => {
+		const updatedBuildings = prevBuildings.map((build, i) => {
+			if (i === index) {
+				const updatedBuild = { ...build, level: value };
+                console.log('Building to update:', updatedBuild); // Add this line
+                return updatedBuild;
+			}
+			return build;
+			});
+		updateDB(updatedBuildings[index]);
+		return updatedBuildings;
+		});
 	
-	const updateBuilding = (index, value) => {
-		const updatedHQ = [...buildings];
-		let name = updatedHQ[index].name;
-		updatedHQ[index].level = value;
-		
-		updateDB(updatedHQ[index], name);
-		setBuildings(updatedHQ);
-  };
+	};
+	
 
   
-  	const updateDB = async (building, name) => {
+  	const updateDB = async (building) => {
 		const accName = currentAccount.name;
 		
 		try {
-			const response = await api.post('/updateSanctuary', { user, accName, building});
+			const response = await api.post(apiRoutes.accounts.updateSanctuary, { user, accName, building}, { headers: { 'Content-Type': 'application/json' } });
 			if (response.status === 200) {
-				console.error('Updated inventory successfully.');
+				console.log(response.data.message);
 			} else {
-				console.error('Error:', response.statusText);
+				console.error(response.data.message || `Error: ${response.status}: ${response.statusText}`);
 			}
 		} catch (error) {
-			console.error('Error fetching user data:', error.message);
+			console.error(error.message || 'An unexpected error occured');
 		}
 	};
 	
@@ -44,11 +50,13 @@ function SanctuaryOverview({buildings, setBuildings}) {
 
 
 	return (
-			<div className="sanctuary-content">
+			<div className="sanctuary-content container">
 				<h3>{currentAccount.name + "'s Sanctuary"}</h3>
 				<div className="building-list">
 					{buildings.map((build, index) => (
-						<BuildingField key={index} index={index} building={build} update={updateBuilding} />
+						<div className="mb-3" key={index}>
+							<BuildingField key={index} index={index} building={build} update={updateBuilding} />
+						</div>
 					))}
 				</div>
 			</div>

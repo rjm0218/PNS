@@ -1,5 +1,6 @@
+import apiRoutes from '../../utils/apiRoutes';
 import {api} from '../../axios_config.js';
-const rssIndex = ['food','wood','steel','gas'];
+const rssIndex = ['food','wood','steel','gas','blueprint','nanotube', 'building engin'];
 
 function getNecessaryBuildings(requirements, buildings, targetBuilding) {
 	let totalBuildings = [];
@@ -53,9 +54,8 @@ async function getBuildingData(buildings) {
 	});
 	
 
-	let gearLevel = 'Base';
 	try {
-		const response = await api.post('/getRSSRequirements', { names, gearLevel });
+		const response = await api.post(apiRoutes.utils.rssReqs, { names});
 		if (response !== null) {
 			let data = response.data;
 			if (data !== null) {
@@ -77,7 +77,7 @@ async function getDiscounts(heroes, gear) {
 		let discounts = localStorage.getItem('discounts');
 		if (!discounts) {
 			try {
-				const response = await api.post('/getRSSDiscounts');
+				const response = await api.post(apiRoutes.utils.rssDiscounts);
 				if (response !== null) {
 					let data = response.data;
 					if (data !== null) {
@@ -137,22 +137,8 @@ async function getDiscounts(heroes, gear) {
 	
 };
 
-function addArrays(stringArr, intArr) {
-  // Check if arrays have the same length
-  if (stringArr.length !== intArr.length) {
-    throw new Error("Arrays must have the same length");
-  }
-
-  // Map each element of the string array to an integer and add it to the corresponding element in the integer array
-  const resultArray = intArr.map((num, index) => num + parseInt(stringArr[index]));
-
-  return resultArray;
-}
 
 export async function getTotalCost(requirements, buildings, targetBuilding, currentAccount) {
-	
-	let totalCost = [0,0,0,0,0,0,0];
-	let perCost = [];
 	
 	let currentBuild = buildings.find(build => build.name === targetBuilding.name);
 	
@@ -162,36 +148,42 @@ export async function getTotalCost(requirements, buildings, targetBuilding, curr
 	let totalBuildings = getNecessaryBuildings(requirements, buildings, targetBuilding);
 	totalBuildings.push(targetBuilding);
 	let rssData = await getBuildingData(totalBuildings);
-	if (rssData) {
-		let heroes = currentAccount.boosts.heroes;
-		let gear = currentAccount.boosts.buildergear;
-		let discounts = await getDiscounts(heroes, gear);
-		if (discounts) {
-			
-			for (let i=0; i<totalBuildings.length; i++) {
-				let cost = getBuildingRssAmounts(totalBuildings[i], rssData);
-				let newCost = cost.slice();
-				newCost.slice(0,6).forEach((val, index) => newCost[index] = Math.max(val - discounts[index],0));
-				
-				let costIdx=0;
-				for (let j=6; j < discounts.length; j++) {
-					newCost[costIdx] -= (cost[costIdx] * discounts[j]);
-					costIdx += 1;
-				}
-				newCost.forEach((val,index) => newCost[index] = Math.ceil(newCost[index])); 
-				perCost.push(newCost);
-				totalCost = addArrays(newCost, totalCost);
-			}
-		}
-	}
-	
-	return {'buildings': totalBuildings, 'perCost': perCost, 'totals': 
-		[{'name': 'Food', 'amount': totalCost[0]},
-		{'name': 'Wood', 'amount': totalCost[1]},
-		{'name': 'Steel', 'amount': totalCost[2]},
-		{'name': 'Gas', 'amount': totalCost[3]},
-		{'name': 'Carbon Nanotubes', 'amount': totalCost[4]},
-		{'name': 'Classified Blueprints', 'amount': totalCost[5]},
-		{'name': 'Building Engineering', 'amount': totalCost[6]}]};
+	if (!rssData) return null;
 
+	let heroes = currentAccount.boosts.heroes;
+	let gear = currentAccount.boosts.buildergear;
+	let discounts = await getDiscounts(heroes, gear);
+	const buildingCosts = {}
+	for (const building of totalBuildings) {
+        buildingCosts[building.name] = {};
+        const cost = getBuildingRssAmounts(building, rssData);
+        const discountedCost = cost.map((val, i) => Math.max(0, val - (discounts[i] || 0))); // Handle missing discounts
+        discountedCost.forEach((val, index) => discountedCost[index] = Math.ceil(val));
+        rssIndex.forEach((resource, i) => {
+            buildingCosts[building.name][resource] = discountedCost[i];
+        });
+    }
+    // Prepare data for the table
+    const tableData = [];
+    const totals = {}; // Use an object to store totals
+
+    // Add building rows
+    Object.keys(buildingCosts).forEach(buildingName => {
+        const building = totalBuildings.find(b => b.name === buildingName);
+        const buildingRow = { Building: `${building.name} - ${building.level}` };
+        rssIndex.forEach(resource => {
+            buildingRow[resource] = buildingCosts[buildingName][resource].toLocaleString();
+            totals[resource] = (totals[resource] || 0) + buildingCosts[buildingName][resource]; // Accumulate totals
+        });
+        tableData.push(buildingRow);
+    });
+
+    // Add totals row at the beginning
+    const totalsRow = { Building: 'Total' };
+    rssIndex.forEach(resource => {
+        totalsRow[resource] = totals[resource].toLocaleString();
+    });
+    tableData.unshift(totalsRow); // Use unshift to add to the beginning
+
+	return { buildings: totalBuildings, totals, tableData };
 }

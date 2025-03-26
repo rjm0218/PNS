@@ -40,12 +40,12 @@ function Login() {
 
     try {
       const response = await api.post(
-        "/login",
+        "/auth/login",
         { username: formData.username, password: formData.pass },
         { withCredentials: "same-origin" }
       );
       setFormData({});
-      setUser(response.data.name);
+      setUser(response.data.data);
       setLoggedIn(true);
       navigate("/dashboard"); // Navigate to the dashboard after login
     } catch (error) {

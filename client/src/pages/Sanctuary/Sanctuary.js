@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Container, Tabs, Tab } from 'react-bootstrap';
 
 import {api} from '../../axios_config.js';
@@ -19,17 +19,18 @@ function Sanctuary() {
 	const [buildings, setBuildings] = useState([]);
 	const [currentTab, setCurrentTab] = useState(localStorage.getItem('activeSancTab') || 'overview');
 
-	
+	const memoizedBuildings = useMemo(() => buildings, [buildings]);
+
 	const getUserData = useCallback(async () => {
 		
 		const accName = currentAccount.name;
 
 		try {
-			const response = await api.post('/sanctuary', { user, accName });
+			let response = await api.post('/accounts/sanctuary', { user, accName });
 			if (response != null) {
-				let data = response.data.account;
-				if (data != null) {
-					setBuildings(data.buildings);
+				let account = response.data.data;
+				if (account != null) {
+					setBuildings(account.buildings);
 				}
 			}
 		} catch (error) {
@@ -40,7 +41,7 @@ function Sanctuary() {
 	
 	useEffect(() => {
 		getUserData();
-	}, []);
+	}, [currentAccount, user, getUserData]);
 	
 	
 	function handleTabChange(tab) {
@@ -61,12 +62,12 @@ function Sanctuary() {
 				>
 					<Tab eventKey="overview" title="Sanctuary Overview">
 						{currentTab === 'overview' &&
-							<SanctuaryOverview buildings={buildings} setBuildings={setBuildings} />
+							<SanctuaryOverview buildings={memoizedBuildings} setBuildings={setBuildings} />
 						}
 					</Tab>
 					<Tab eventKey="plan" title="Plan Ahead">
 						{currentTab === 'plan' && buildings.length > 0 &&
-							<PlanAhead buildings={buildings} />
+							<PlanAhead buildings={memoizedBuildings} />
 						}
 					</Tab>
 					

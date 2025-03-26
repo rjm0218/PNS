@@ -21,19 +21,28 @@ const BuildingField = ({index, building, update}) => {
 	};
 	
 	return (
-		<Form >
-			<Form.Group as={Row} className='building-entry'>
-				<Form.Label className='building-name'>
-					{building.name}
-				</Form.Label>
-				<Form.Control type='level' className='level-value' placeholder={building.level} onChange={handleChange} />
-				<div className='level-change'>
-					<Button variant="light" onClick={() =>update(index,parseInt(building.level)+1)}>+</Button>
-					<Button variant="light" onClick={() =>update(index,parseInt(building.level)-1)}>-</Button>
-				</div>
-			</Form.Group>
-		</Form>
-	);
+<Form className="building-entry">
+  <div className="mb-2">
+    <Form.Label className="building-name">{building.name}</Form.Label>
+  </div>
+  <Row className="align-items-center">
+    <Col xs={7}>
+      <Form.Control
+        type="number"
+        className="level-value"
+        value={building.level}
+        onChange={handleChange}
+        min={0}
+        max={maxLevel}
+      />
+    </Col>
+    <Col xs={5} className="level-change d-flex gap-2 justify-content-end">
+      <Button variant="light" onClick={() => update(index, parseInt(building.level) + 1)}>+</Button>
+      <Button variant="light" onClick={() => update(index, parseInt(building.level) - 1)}>-</Button>
+    </Col>
+  </Row>
+</Form>
+	  );
 };
 
 export default BuildingField;

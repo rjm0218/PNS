@@ -1,18 +1,24 @@
 const mongoose = require('mongoose');
 
 const discountSchema = new mongoose.Schema({
-	heroes: { 
+	heroes: [
+		{ 
 		name: {type: String, required: false},
 		data: {type: Array, required: false}
-	},
-	buildGear: {
+		}
+	],
+	buildGear: [
+		{
 		level: {type: String, required: false},
 		data: {type: Array, required: false}
-	},
-	researchGear: {
+		}
+	],
+	researchGear: [
+		{
 		level: {type: String, required: false},
 		data: {type: Array, required: false}
-	},
+		}
+	],
 
 }, {collection: 'discounts'});
 

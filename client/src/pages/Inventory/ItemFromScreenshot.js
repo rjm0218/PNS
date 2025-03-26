@@ -1,11 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Container, Button, Row, Col, Stack, InputGroup, Form, ButtonGroup, Dropdown, ProgressBar } from 'react-bootstrap';
+import apiRoutes from '../../utils/apiRoutes';
+import { useState } from 'react';
+import {  Button, Row, Col, InputGroup, Form, ProgressBar } from 'react-bootstrap';
 import { createWorker, PSM } from 'tesseract.js';
-import * as tf from '@tensorflow/tfjs';
 
 import {api} from '../../axios_config.js';
-import NavMenu from '../../components/NavMenu';
-import AccountSelection from '../../components/AccountSelection';
 import { useAccountContext } from '../../context/account.context';
 import { useLoginContext } from '../../context/login.context';
 import { useThemeContext } from '../../context/theme.context';
@@ -25,23 +23,10 @@ function ItemFromScreenshot({items, setItems}) {
 	const [box, setBox] = useState('False');
 	const [multiplier, setMultiplier] = useState('');
 	const [screenshots, setFiles] = useState([]);
-	const [procImage, setProcImage] = useState('');
 	const [ssItemsFound, setSSItemsFound] = useState([]);
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [progress, setProgress] =  useState('');
-	
-	useEffect(() => {
-    async function loadModel() {
-      // Load the model
-      const model = await tf.loadLayersModel('./ocr_model.tflite');
-      console.log('Model loaded.');
 
-      // Here you can now use the model to make predictions
-      // Example: model.predict(someInput);
-    }
-
-    loadModel();
-  }, []);
 	
 	const handleAddItem = () => {
 
@@ -62,12 +47,12 @@ function ItemFromScreenshot({items, setItems}) {
 		const accName = currentAccount.name;
 
 		// Send a POST request to your backend server to save the item to the database
-		api.post('/addToInventory', { user, accName, newItem }).then(response => {
-			console.log('Item added to grocery list:', response.data);
+		api.post(apiRoutes.inventory.add, { user, accName, newItem }).then(response => {
+			console.log('Item added to inventory list:', response.data);
 			// Optionally, update state or trigger any other actions
 		})
 		.catch(error => {
-			console.error('Error adding item to grocery list:', error);
+			console.error('Error adding item to inventory list:', error);
 			// Handle error appropriately
 		});
 
