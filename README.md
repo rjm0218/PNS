@@ -1,7 +1,7 @@
 # PNS
 PNS Companion 
 
-Project Name: [Your Project Name Here] - Sanctuary Planner
+Project Name: PNS Companion App
 This project provides a web application for planning and managing building upgrades in a sanctuary-style game (or similar). It allows users to plan upgrades, estimate resource costs, and track progress.
 
 Features:
